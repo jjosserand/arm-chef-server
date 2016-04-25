@@ -10,6 +10,7 @@
     },
     "adminUsername": {
       "type": "string",
+      "defaultValue": "azure",
       "metadata": {
         "description": "User name for the Virtual Machine."
       }
@@ -27,9 +28,65 @@
       }
     },
     "chefServerSKU": {
+      "defaultValue": "chefbyol",
       "type": "string",
       "metadata": {
-        "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version. Allowed values: 12.04.5-LTS, 14.04.2-LTS, 15.10."
+        "description": "The Chef server image from which to create the Chef server"
+      },
+      "allowedValues": [
+        "chefbyol",
+        "azure_marketplace_25",
+        "azure_marketplace_50",
+        "azure_marketplace_100",
+        "azure_marketplace_150",
+        "azure_marketplace_200",
+        "azure_marketplace_250"
+      ]
+    },
+    "chefAdminUser": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "Admin user to create when setting up the Chef server"
+      }
+    },
+    "chefAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password to be set for the Chef Admin user"
+      }
+    },
+    "chefAdminFirstname": {
+      "type": "string",
+      "defaultValue": "Admin",
+      "metadata": {
+        "description": "First name of the admin user"
+      }
+    },
+    "chefAdminLastname": {
+      "type": "string",
+      "defaultValue": "Account",
+      "metadata": {
+        "description": "Last name of the admin user"
+      }
+    },
+    "chefAdminEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email address of the admmin user"
+      }
+    },
+    "chefOrganization": {
+      "type": "string",
+      "metadata": {
+        "description": "Organization to create on the chef server"
+      }
+    },
+    "customScriptURL": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/chef-partners/arm-chef-server/master/scripts/setup-chefserver.sh",
+      "metadata": {
+        "description": "URL to the the setup script"
       }
     }
   },
@@ -52,7 +109,8 @@
     "virtualNetworkName": "MyVNET",
     "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
     "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]",
-    "apiVersion": "2015-06-15"
+    "apiVersion": "2015-06-15",
+    "chef_org_name": "[tolower(parameters('chefOrganization'))]"
   },
   "resources": [
     {
@@ -187,6 +245,45 @@
           }
         }
       }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('vmName'), '/ConfigureChefServer')]",
+      "apiVersion": "[variables('apiVersion')]",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',parameters('vmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.5",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[parameters('customScriptURL')]"
+          ],
+          "commandToExecute": "[concat('/bin/bash setup-chefserver.sh -F ', parameters('dnsLabelPrefix'), '.', variables('location'), '.cloudapp.azure.com -u ', parameters('chefAdminUser'), ' -p ', parameters('chefAdminPassword'), ' -f ', parameters('chefAdminFirstname'), ' -l ', parameters('chefAdminLastname'), ' -e ', parameters('chefAdminEmail'), ' -o ', variables('chef_org_name'))]"
+        }
+      }
     }
-  ]
+  ],
+  "outputs": {
+    "fqdn": {
+      "type": "string",
+      "value": "[concat(parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+    },
+    "sshCommand": {
+      "type": "string",
+      "value": "[concat('ssh ', parameters('adminUsername'), '@', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+    },
+    "chefServerUrl": {
+      "type": "string",
+      "value": "[concat('https://', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com', '/organizations/', toLower(parameters('chefOrganization')))]"
+    },
+    "starterKitPage": {
+      "type": "string",
+      "value": "[concat('https://', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com', '/organizations/', variables('chef_org_name'), '/getting_started')]"
+    }
+  }
 }

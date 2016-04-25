@@ -1,8 +1,31 @@
-# Creating a Chef Server using an ARM Template
+# Creating a Chef Server using an ARM template
 
-This template will create a chef server on Azure.  The Chef server software will be installed but it will not be created.  This last part has to be done manually in this setup.
+This template will create a Chef server in the specified resource group.  The software will be installed and configured according to the parameters that have been supplied.  This update means that no manual operations are required to get the Chef server up and running.
 
-Ensure that the parameters file is up to date with the relevant settings before running the following commands.
+## Parameters
+
+The following table describes what each parameter is used for and any that have default values.
+
+| Name               | Description                                                                                                           | Default Value     | Example     |
+|:-------------------|:----------------------------------------------------------------------------------------------------------------------|:------------------|:------------|
+| vmName             | Name of the virtual machine                                                                                           |                   | chef-svr-01 |
+| adminUsername      | SSH username for the server                                                                                           | azure             |             |
+| adminPassword      | Password for the admin user                                                                                           |                   |             |
+| dnsLabelPrefix     | Name that will be assigned to the DNS to make an FQDN for the machine. Typically this would be the same as the vmName |                   | chef-svr-01 |
+| chefServerSKU      | Name of the Chef Server SKU to use.                                                                                   | chefbyol          |             |
+| chefAdminUser      | Username of the account to create on the chef server                                                                  | admin             |             |
+| chefAdminPassword  | Password to be associated with the admin user                                                                         |                   |             |
+| chefAdminFirstname | Firstname of the admin account user                                                                                   | Admin             |             |
+| chefAdminLastname  | Lastname of the admin account user                                                                                    | Account           |             |
+| chefAdminEmail     | Email address for the admin account                                                                                   |                   |             |
+| chefOrganization   | Name of the first organization to create on the chef server                                                           |                   | AzureOrg    |
+| customScriptURL    | The Public URL from which the script to setup the server can be downloaded from.                                      | &lt;SEE BELOW&gt; |             |
+
+Any of the parameters that have a default value do not appear in the `chefserver.parameters.json` file.  However to override the values add them to this file as required.
+
+The organization name will be converted to lowercase when passed to the configuration script as this is a requirement of the chef server.  Ensure that the organization name does not contain spaces.
+
+The `customScriptURL` is set to 'https://raw.githubusercontent.com/chef-partners/arm-chef-server/master/scripts/setup-chefserver.sh' by default which is the script in this repo `scripts\setup-chefserver.sh`.
 
 ## Run the template into Azure
 
@@ -52,14 +75,19 @@ Once the group is available then the template can be deployed:
 C:\> New-AzureRmResoureGroupDeployment -ResourceGroupName "<NAME_OF_RESOURCE_GROUP>" -TemplateFile chefserver.json -TemplateParameterFile chefserver.parameters.json -Name "<NAME_OF_DEPLOYMENT>"
 ```
 
-## Configure the Chef Server
+## After Provision Steps
 
-The Chef Server now needs to be configured.  This can be accomplished by logging onto the server and running the following commands.
+Once the server has been provisioned, the configured outputs will be displayed.  These outputs are as shown below:
 
-```bash
-$> echo 'api_fqdn "<FQDN>"' | sudo tee -a /etc/chef-marketplace/marketplace.rb
-$> sudo chef-marketplace-ctl hostname <FQDN>
-$> sudo chef-marketplace-ctl setup
-```
+| Name           | Description                                                                                                             |
+|:---------------|:------------------------------------------------------------------------------------------------------------------------|
+| fqdn           | The fully qualified domain name of the server.  This will be of the form <dnsLabelPrefix>.<location>.cloudapp.azure.com |
+| sshCommand     | The ssh command required to login to the server with the correct user                                                   |
+| chefServerUrl  | The concatenated URL for the server which includes the organization name                                                |
+| starterKitPage | URL to the page on the server where the validation keys can be downloaded                                               |
 
-More information can be found at https://docs.chef.io/azure_portal.html.
+[! ARM Template Outputs](/images/outputs.png)
+
+Use the `startKitPage` URL to regenerate the organization keys by clicking on 'Download Starter Kit' on the page.
+
+For more information about using the Azure Marketplace chef server please refer to https://docs.chef.io/azure_portal.html.
