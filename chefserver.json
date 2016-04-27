@@ -271,19 +271,19 @@
   "outputs": {
     "fqdn": {
       "type": "string",
-      "value": "[concat(parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+      "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn)]"
     },
     "sshCommand": {
       "type": "string",
-      "value": "[concat('ssh ', parameters('adminUsername'), '@', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com')]"
+      "value": "[concat('ssh ', parameters('adminUsername'), '@', reference(variables('publicIPAddressName')).dnsSettings.fqdn))]"
     },
     "chefServerUrl": {
       "type": "string",
-      "value": "[concat('https://', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com', '/organizations/', toLower(parameters('chefOrganization')))]"
+      "value": "[concat('https://', reference(variables('publicIPAddressName')).dnsSettings.fqdn), '/organizations/', toLower(parameters('chefOrganization')))]"
     },
     "starterKitPage": {
       "type": "string",
-      "value": "[concat('https://', parameters('vmName'), '.', resourceGroup().location, '.cloudapp.azure.com', '/organizations/', variables('chef_org_name'), '/getting_started')]"
+      "value": "[concat('https://', reference(variables('publicIPAddressName')).dnsSettings.fqdn), '/organizations/', variables('chef_org_name'), '/getting_started')]"
     }
   }
 }
