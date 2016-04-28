@@ -153,8 +153,6 @@ while :; do
       ;;
 
     *)
-      # Display the help for the script
-      show_help
       break
   esac
 
@@ -164,16 +162,29 @@ done
 # Check that the marketplace command exists
 if [ ! -f $MARKETPLACE_CMD ]
 then
-  echo "Chef marketplace command cannot be found.  Was the AM image used to create this server?"
+  echo "Chef marketplace command cannot be found.  Was the Azure Marketplace image used to create this server?"
   exit 1
 fi
 
 # Ensure that the logdir exists
-if [ ! -f $LOG_DIR ]
+if [ ! -d $LOG_DIR ]
 then
   echo "Creating log directory: $LOG_DIR"
   mkdir -p $LOG_DIR
 fi
+
+# Define the command log so that the commands used to set everything up can be seen
+CMD_LOG="$LOG_DIR/cmd.log"
+touch $CMD_LOG
+
+# Update Ubuntu first
+echo "Updating packages"
+CMD='/usr/bin/apt-get update'
+echo $CMD >> $CMD_LOG
+$CMD >> $LOG_DIR/ubuntu.log 2>&1
+CMD='/usr/bin/apt-get upgrade -y'
+echo $CMD >> $CMD_LOG
+$CMD >> $LOG_DIR/ubuntu.log 2>&1
 
 # Set the FQDN in the marketplace configuration file
 echo "Setting the FQDN"
@@ -189,12 +200,14 @@ else
 fi
 
 # Define the logfile
-$LOGFILE=$(printf "%s/setup.log" $LOG_DIR)
+LOGFILE=$(printf "%s/setup.log" $LOG_DIR)
 
 # Set the FQDN using the chef-marketplace-ctl command
 CMD="${MARKETPLACE_CMD} hostname $FQDN > $LOGFILE"
+echo $CMD >> $CMD_LOG
 $CMD
 
 # Build up the command to configure the server
 CMD=$(printf '%s setup -y --eula -u %s -p %s -f %s -l %s -e %s -o %s >> %s' $MARKETPLACE_CMD $USERNAME $PASSWORD $FIRSTNAME $LASTNAME $EMAILADDRESS $ORG $LOGFILE)
+echo $CMD >> $CMD_LOG
 $CMD
